@@ -1,33 +1,402 @@
-# Login Page – React Auth App
+# React Auth қосымшасы – жоба түсіндірмесі
 
-A multilingual (RU/KZ) authentication app with Login, Register, and Profile. Uses localStorage only (no backend).
+> Студенттік қорғау/презентация үшін дайын құжат
 
-> **Cleanup:** Flutter/Dart/Android/iOS files were removed. This project now contains only the React web app. See `CLEANUP_NOTES.md` for details.
+---
 
-## Features
+## 1. Жобаның жалпы сипаттамасы
 
-- **Login** – email, password, Remember Me checkbox
-- **Register** – name, email, password
-- **Profile** – user info, logout
-- **Language** – RU/KZ toggle, persisted in localStorage
-- **Validation** – email format, required fields, multilingual errors
+### Бұл қандай жоба?
 
-## Run
+Бұл **React** арқылы жасалған **аутентификация қосымшасы** (Login/Register/Profile). Қолданушы тіркеледі, кіреді және профильін көреді. Барлық деректер **браузердің localStorage**-інде сақталады – **backend сервер жоқ**.
 
+### Не үшін жасалған?
+
+- React негіздерін үйрену (компоненттер, state, context)
+- localStorage арқылы деректерді сақтау
+- Көптілді қосымша жасау (RU/KZ)
+- Аутентификация логикасын түсіну
+
+### Негізгі функционал
+
+| Функция | Сипаттама |
+|--------|-----------|
+| **Тіркелу** | Аты, email, құпия сөз енгізіп жаңа аккаунт жасау |
+| **Кіру** | Email және құпия сөз арқылы кіру |
+| **Remember Me** | Белгілесең – бетті жаңартқанда да кіруің сақталады |
+| **Профиль** | Атың мен email-іңді көру, шығу батырмасы |
+| **Тіл ауыстыру** | RU / KZ – барлық мәтін өзгереді |
+
+---
+
+## 2. Қолданылған технологиялар
+
+### React деген не және не үшін қолданылды?
+
+**React** – Facebook жасаған JavaScript кітапханасы. Интерфейс жасауға арналған. Біз React қолдандық, себебі:
+
+- **Компоненттер** – бөліктерге бөліп код жазу оңай
+- **State** – деректер өзгергенде экран автоматты жаңарады
+- **Context** – тіл сияқты глобалды мәліметті барлық компонентке беруге болады
+
+```javascript
+// Мысал: useState арқылы email мәнін сақтау
+const [email, setEmail] = useState('');
+// Пайдаланушы тергенде setEmail() шақырылады → экран жаңарады
+```
+
+### localStorage не үшін қолданылды?
+
+**localStorage** – браузерде деректерді сақтауға арналған. Серверге жібермейді, тек компьютерде қалады.
+
+Бізде 4 нәрсе сақталады:
+
+| Кілт | Не сақталады |
+|------|--------------|
+| `app_users` | Тіркелген барлық қолданушылар (аты, email, құпия сөз) |
+| `app_current_user` | Қазір кірген қолданушы (Remember Me белгіленсе) |
+| `app_remember_me` | "Мені есте сақта" белгісі (true/false) |
+| `app_language` | Таңдалған тіл (ru немесе kz) |
+
+### Қосымша кітапханалар
+
+**Сыртқы кітапхана жоқ.** Тек React пен Create React App қолданылды:
+
+- `react` (^19.2.4) – UI құрастыру
+- `react-dom` (^19.2.4) – браузерге рендерлеу (createRoot)
+- `react-scripts` (5.0.1) – build, start, test командалары
+
+Тіл ауыстыру үшін **i18n кітапханасы қолданылмады** – өзіміз `translations` объектісін жасадық.
+
+---
+
+## 3. Архитектура
+
+### Папкалар құрылымы
+
+```
+loginpage/
+├── public/              ← HTML шаблон, favicon
+│   ├── index.html
+│   └── favicon.ico
+├── src/
+│   ├── components/      ← Қайта пайдаланылатын UI бөліктері
+│   ├── context/         ← Глобалды state (тіл)
+│   ├── pages/           ← Беттер (Login, Register, Profile)
+│   ├── services/        ← Бизнес-логика (auth, storage)
+│   ├── translations.js  ← RU/KZ мәтіндері
+│   ├── App.js           ← Басты компонент, навигация
+│   ├── index.js         ← Кіру нүктесі (ReactDOM.createRoot)
+│   └── index.css        ← Глобалды стильдер, @keyframes spin
+├── package.json
+└── ...
+```
+
+### Әр папка не үшін керек?
+
+| Папка | Мақсаты |
+|-------|---------|
+| **components** | Button, Input, Card, LanguageToggle – бірнеше жерде қолданылады |
+| **pages** | LoginPage, RegisterPage, ProfilePage – әр беттің логикасы мен UI-і |
+| **services** | authService, storageService – деректермен жұмыс, localStorage |
+| **context** | LanguageContext – тіл мәнін барлық компонентке беру |
+
+### Қандай файл не істейді?
+
+| Файл | Функциясы |
+|------|-----------|
+| `App.js` | Навигацияны басқарады: кім кіргенін тексереді, қай бетті көрсететінін шешеді |
+| `index.js` | React кіру нүктесі – createRoot, App компонентін рендерлейді |
+| `index.css` | Глобалды стильдер, loading батырма үшін @keyframes spin анимациясы |
+| `translations.js` | `ru` және `kz` тілдеріндегі барлық мәтіндер |
+| `authService.js` | register(), login(), logout(), getCurrentUser() – аутентификация |
+| `storageService.js` | localStorage-пен жұмыс – get, set, remove, getJSON, setJSON |
+| `LanguageContext.js` | Тіл state-ін сақтайды, `t` (translations) береді |
+| `LoginPage.js` | Кіру формасы, валидация, Remember Me checkbox |
+| `RegisterPage.js` | Тіркелу формасы, тіркелгеннен кейін автоматты login |
+| `ProfilePage.js` | Қолданушы аты, email, аватар (бас әріп), Logout батырмасы |
+| `Button.js` | Жалпы батырма (loading күйі, primary/danger варианттары) |
+| `Input.js` | Жалпы input өрісі (label, error, валидация көрсету) |
+| `Card.js` | Ақ карточка – формаларды орайды, box-shadow |
+| `LanguageToggle.js` | RU / KZ батырмалары – әр беттің header-інде |
+
+---
+
+## 4. Аутентификация (Login/Register)
+
+### Қалай жұмыс істейді? (Backend жоқ)
+
+Барлық логика **браузерде** орындалады. Серверге сұрау жіберілмейді. Деректер `localStorage`-та сақталады.
+
+**Жұмыс принципі:**
+1. Тіркелген қолданушылар `app_users` кілтімен JSON түрінде сақталады
+2. Кіру кезінде email мен құпия сөз осы тізіммен салыстырылады
+3. Сәйкес келсе – кіру рәсімделеді
+
+### Қолданушы қалай тіркеледі?
+
+```
+1. Register бетіне өтеді
+2. Аты, email, құпия сөз енгізеді
+3. "Тіркелу" басылады
+4. authService.register() шақырылады
+5. Email босба? (users[key] тексереді, key = email.toLowerCase()) → users объектісіне қосады
+6. localStorage-қа жазады (app_users)
+7. Автоматты login жасап Profile-ға өтеді
+```
+
+**Код мысалы:**
+```javascript
+// authService.js
+register({ name, email, password }) {
+  const users = storageService.getUsers();
+  const key = email.toLowerCase();  // Email әріптік түрде кішірейтіледі
+  if (users[key]) return { success: false, error: 'email_exists' };
+  users[key] = { name, email: key, password };
+  storageService.setUsers(users);  // localStorage-қа сақтау
+  return { success: true };
+}
+```
+
+### Қалай login жасайды?
+
+```
+1. Login бетінде email, құпия сөз енгізеді
+2. "Remember Me" белгілеуі мүмкін
+3. "Кіру" басылады
+4. authService.login() – users-тан email/парольді тексереді (email кіші әріппен салыстырылады)
+5. Дұрыс болса:
+   - Remember Me ✓ → localStorage-қа жазады (app_current_user)
+   - Remember Me ✗ → тек жадта (inMemoryUser) сақтайды, бет жаңарғанда жоғалады
+6. Profile бетіне өтеді
+```
+
+### Деректер қайда сақталады?
+
+| Деректер | Орны |
+|----------|------|
+| Тіркелген қолданушылар | `localStorage['app_users']` – JSON |
+| Қазіргі қолданушы (Remember Me ✓) | `localStorage['app_current_user']` |
+| Remember Me белгісі | `localStorage['app_remember_me']` |
+| Құпия сөз | `app_users` ішінде (шынында сақтау қауіпсіз емес, бұл демо) |
+
+**authService қайтару мәндері:**
+- `register()`: `{ success: true }` немесе `{ success: false, error: 'email_exists' }`
+- `login()`: `{ success: true, user }` немесе `{ success: false, error: 'invalid_credentials' }`
+
+---
+
+## 5. Remember Me функциясы
+
+### Не істейді?
+
+"Мені есте сақта" белгіленсе – бетті жаңартқанда немесе қосымшаны қайта ашқанда қолданушы **автоматты кірген** болып қалады.
+
+Белгіленбесе – бетті жаңартқанда **шығарылады**, қайта кіру керек.
+
+### Қалай жұмыс істейді?
+
+| Remember Me | Сақтау орны | Бет жаңарғанда |
+|-------------|-------------|----------------|
+| ✓ Белгіленген | localStorage (app_current_user) | Кіруі сақталады |
+| ✗ Белгіленбеген | Тек жадта (inMemoryUser) | Шығарылады |
+
+**Логика:**
+- `rememberMe = true` → `storageService.setCurrentUser(user)` – localStorage-қа жазады
+- `rememberMe = false` → `inMemoryUser = user` – тек JavaScript айнымалысында, бет жаңарғанда жоғалады
+
+**getCurrentUser() қалай жұмыс істейді:**
+1. Алдымен `inMemoryUser` бар ма тексереді (Remember Me ✗ кезінде)
+2. Жоқ болса – `storageService.getRememberMe()` тексереді
+3. getRememberMe() = false болса – null қайтарады (бет жаңарғанда кіру жоғалады)
+4. getRememberMe() = true болса – localStorage-тан қолданушыны оқиды
+
+### Қай жерде сақталады?
+
+- **Remember Me ✓:** `localStorage['app_current_user']` және `localStorage['app_remember_me'] = 'true'`
+- **Remember Me ✗:** Ештеңе localStorage-та сақталмайды, тек `inMemoryUser` айнымалысында
+
+---
+
+## 6. Тіл ауыстыру жүйесі (RU/KZ)
+
+### Қалай іске асқан?
+
+1. **LanguageContext** – `language` state-ін (`ru` немесе `kz`) сақтайды
+2. **LanguageToggle** – RU / KZ батырмалары, `setLanguage()` шақырады
+3. **translations** – әр тілдегі мәтіндері бар объект
+4. Компоненттер `useLanguage()` арқылы `t` алады – `t.welcomeBack`, `t.signIn` т.б.
+
+### translations объектісі қалай жұмыс істейді?
+
+```javascript
+// translations.js
+export const translations = {
+  ru: {
+    welcomeBack: 'С возвращением',
+    signIn: 'Войти',
+    // ...
+  },
+  kz: {
+    welcomeBack: 'Қош келдіңіз',
+    signIn: 'Кіру',
+    // ...
+  },
+};
+```
+
+Компонентте:
+```javascript
+const { t } = useLanguage();
+<h1>{t.welcomeBack}</h1>  // Тілге қарай "С возвращением" немесе "Қош келдіңіз"
+```
+
+### Тіл қалай сақталады?
+
+`localStorage['app_language']` – `'ru'` немесе `'kz'` мәні сақталады.
+
+Қосымша ашылғанда `LanguageContext` осы мәнді оқып, `language` state-ін орнатады.
+
+### UI қалай өзгереді?
+
+`language` өзгергенде → `LanguageContext` жаңарады → `t` жаңа мәтіндерімен береді → `useLanguage()` қолданатын барлық компоненттер қайта рендер болады → экрандағы мәтіндер жаңа тілде көрінеді.
+
+---
+
+## 7. Навигация
+
+### Қай экраннан қайда өтеді?
+
+```
+┌─────────────┐     "Аккаунт жоқ па? Тіркелу"     ┌─────────────┐
+│   LOGIN     │ ────────────────────────────────► │  REGISTER   │
+│             │                                   │             │
+│             │  ◄── "Аккаунт бар ма? Кіру"       │             │
+└──────┬──────┘                                   └──────┬──────┘
+       │                                                 │
+       │ Кіру сәтті                                      │ Тіркелу сәтті
+       ▼                                                 ▼
+┌─────────────┐                                   ┌─────────────┐
+│   PROFILE   │ ◄─────────────────────────────────│   PROFILE   │
+│             │                                   │             │
+│  [Шығу]     │                                   │             │
+└──────┬──────┘                                   └─────────────┘
+       │
+       │ Logout басылғанда
+       ▼
+┌─────────────┐
+│   LOGIN     │
+└─────────────┘
+```
+
+### Login → Register → Profile flow
+
+1. **Бастапқы күй:** Login беті (егер кірмеген болса)
+2. **"Аккаунт жоқ па? Тіркелу"** → Register беті
+3. **"Аккаунт бар ма? Кіру"** → Login бетіне қайту
+4. **Кіру/Тіркелу сәтті** → Profile беті
+5. **"Шығу"** → Login бетіне қайту
+6. **Remember Me ✓ және бет жаңарғанда** → тікелей Profile беті
+
+---
+
+## 8. Валидация
+
+### Қандай тексерулер бар?
+
+| Өріс | Тексеру | Қате хабарламы |
+|------|---------|----------------|
+| Email | Бос болмауы, форматы (user@domain.com) | errorEnterEmail, errorValidEmail |
+| Құпия сөз | Бос болмауы, мин. 4 таңба | errorEnterPassword, errorPasswordLength |
+| Аты | Бос болмауы (тіркелуде) | errorEnterName |
+
+**Email форматы:** `^[\w.-]+@([\w-]+\.)+[\w-]{2,4}$` – regex арқылы тексеріледі.
+
+---
+
+## 9. UI/UX туралы қысқаша
+
+### Дизайн қалай жасалған?
+
+- **Градиент фон:** `linear-gradient(135deg, #e0e7ff 0%, #f5f5f5 100%)` – көктен сұрға
+- **Карточка:** ақ фон, дөңгелек бұрыштар (20px), көлеңке
+- **Ортада орналасу:** формалар экран ортасында, responsive
+- **Түстер:** негізгі – `#6366f1` (көк), қате – `#ef4444` (қызыл)
+
+### Қандай компоненттер қолданылған?
+
+| Компонент | Қолданылуы |
+|-----------|------------|
+| **Card** | Login және Register формаларын орайды |
+| **Input** | Email, құпия сөз, аты өрістері |
+| **Button** | "Кіру", "Тіркелу", "Шығу" – loading күйі бар |
+| **LanguageToggle** | RU / KZ батырмалары – әр беттің header-інде |
+
+---
+
+## 10. Қазіргі дайын функционал (ISC-1)
+
+| № | Функционал | Статусы |
+|---|------------|---------|
+| 1 | Тіркелу (аты, email, құпия сөз) | ✅ Жұмыс істейді |
+| 2 | Кіру (email, құпия сөз) | ✅ Жұмыс істейді |
+| 3 | Remember Me (сессияны сақтау) | ✅ Жұмыс істейді |
+| 4 | Профиль (аты, email көру) | ✅ Жұмыс істейді |
+| 5 | Logout (шығу) | ✅ Жұмыс істейді |
+| 6 | Тіл ауыстыру (RU/KZ) | ✅ Жұмыс істейді |
+| 7 | Валидация (email форматы, бос өрістер, құпия сөз мин. 4 таңба) | ✅ Жұмыс істейді |
+| 8 | Қате хабарлары (көптілді) | ✅ Жұмыс істейді |
+| 9 | localStorage-та деректер сақтау | ✅ Жұмыс істейді |
+
+---
+
+## 11. ISC-2 жоспары
+
+Келесі кезеңде қосылуы мүмкін функциялар:
+
+| Жоспарланған функция | Сипаттама |
+|---------------------|-----------|
+| **Firebase Backend** | Нақты серверде деректер сақтау, қауіпсіз аутентификация |
+| **REST API** | Node.js/Express backend, JWT токендер |
+| **Құпия сөзді қалпына келтіру** | Email арқылы құпия сөзді өзгерту |
+| **Профильді өзгерту** | Атын, фотосын жаңарту |
+| **Қосымша тілдер** | Ағылшын, т.б. |
+| **React Router** | URL бойынша навигация (/login, /register, /profile) |
+
+---
+
+## 12. Қорытынды
+
+### Жобаның нәтижесі
+
+- **Жұмыс істейтін аутентификация қосымшасы** – тіркелу, кіру, профиль, шығу
+- **Көптілділік** – RU және KZ тілдерінде
+- **localStorage** – backend-сіз деректерді сақтау
+- **Таза архитектура** – components, pages, services, context бөлініп жасалған
+
+### Не үйрендік
+
+1. **React** – компоненттер, useState, useEffect, Context
+2. **localStorage** – браузерде деректер сақтау
+3. **Аутентификация логикасы** – тіркелу, кіру, сессия басқару
+4. **Көптілді қосымша** – translations объектісі, LanguageContext
+5. **Валидация** – формаларды тексеру, қате хабарлары
+6. **UI құрастыру** – қайта пайдаланылатын компоненттер
+
+---
+
+**Қосымшаны іске қосу:**
 ```bash
+# Жоба тамыр папкасынан (loginpage) іске қосу керек
+cd loginpage
 npm install
 npm start
 ```
 
-## Structure
+Браузерде `http://localhost:3000` ашылады.
 
+**Build жасау (production):**
+```bash
+npm run build
 ```
-src/
-├── components/     # Reusable UI (Button, Input, Card, LanguageToggle)
-├── context/        # LanguageContext (i18n state)
-├── pages/          # LoginPage, RegisterPage, ProfilePage
-├── services/       # authService, storageService
-├── translations.js # RU/KZ text (no external i18n lib)
-├── App.js
-└── index.js
-```
+Нәтиже `build/` папкасында шығады.
